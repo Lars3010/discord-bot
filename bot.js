@@ -3,12 +3,43 @@ const client = new Discord.Client();
 const {prefix, token} = require('./config.json');
 const schedule = require('node-schedule');
 
+const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
+];
+
+//get emoji and unicode backup based on the name and return it
 function getEmoji(emojiName, backupName)
 {
     let selectedEmoji = client.emojis.find(emoji => emoji.name === emojiName)
     selectedEmoji = (selectedEmoji === null) ? backupName : selectedEmoji;
     return selectedEmoji;
 }
+
+//get suffix for the written day
+function setOrdinalSuffix(day)
+    {
+        x = day % 10;
+        y = day % 100;
+        if(x == 1 && y != 11)
+        {
+            return `${day}st`;
+        }
+        if(x == 2 && y != 12)
+        {
+            return `${day}nd`;
+        }
+        if(x == 3 && y != 13)
+        {
+            return `${day}rd`
+        }
+        return `${day}th`;
+    }
 
 // when the client is ready, run this code
 // this event will only trigger one time after logging in
@@ -19,44 +50,34 @@ client.once('ready', () => {
     const disagree_emoji = getEmoji('Disagree', ':no_entry:');
     let eventDates = new Array();
 
-    //this works but it can be done cleaner.
-    let dt = new Date();
-    console.log(dt);
-    let currentDay = dt.getDay();
-    console.log(currentDay);
-    let diff = 6 - currentDay;
-    console.log(diff);
-    let saturdayDate = new Date(dt);
-    saturdayDate.setDate(dt.getDate() + diff);
-    saturdayDate.setUTCHours(18);
-    saturdayDate.setUTCMinutes(00);
-    saturdayDate.setUTCSeconds(00);
-    let sundayDate = new Date(saturdayDate);
-    sundayDate.setDate(dt.getDate() + diff + 1);
-    console.log(sundayDate);
-
-    eventDates.push(saturdayDate, sundayDate);
-    console.log(eventDates);
-
-    function getDates(dt)
+    //get weekend event dates and push to eventDates array;
+    function getEventDate(dt)
     {
+        let x = 6;
         dt = new Date(dt);
-        console.log(dt);
-         
+        for(i=0;i < 2;i++)
+        {
+            let day = dt.getDay();
+            let diff = x - day;
+            let eventDate = new Date(dt);
+            eventDate.setDate(dt.getDate() + diff);
+            eventDate.setUTCHours(18);
+            eventDate.setUTCMinutes(00);
+            eventDate.setUTCSeconds(00);
+            eventDate.setUTCMilliseconds(00);
+            eventDates.push(eventDate);
+            x++;
+        }
     }
 
-    const days = [
-        'Sunday',
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday'
-    ];
+    getEventDate(new Date());
 
-    let job = schedule.scheduleJob('*/10 * * * * *', () => {
-        //announcementChannel.send(`please ${agree_emoji} or ${disagree_emoji} if you will be able to make it to the next OP on Saturday the 23rd. please change your emoji depending on your availability.`);
+    //weekly monday message
+    let mondayAnnouncement = schedule.scheduleJob('*/10 * * * * *', () => {
+        for(i=0; i < eventDates.length; i++)
+        {
+            announcementChannel.send(`Please ${agree_emoji} or ${disagree_emoji} if you will be able to make it to the next OP on ${days[eventDates[i].getDay()]} the ${setOrdinalSuffix(eventDates[i].getDate() )}. Please change your emoji depending on your availability.`);
+        }
     })
 });
 
